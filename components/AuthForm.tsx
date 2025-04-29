@@ -10,6 +10,12 @@ import Link from "next/link";
 import { toast } from "sonner";
 import FormField from "./FormField";
 import { useRouter } from "next/navigation";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { auth } from "@/firebase/Client";
+import { signIn, signUp } from "@/lib/actions/auth.action";
 
 const authFormSchema = (type: FormType) => {
   return z.object({
@@ -32,21 +38,58 @@ const Authform = ({ type }: { type: FormType }) => {
     },
   });
 
-  // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (type === "sign-up") {
+        const { name, email, password } = values;
+
+        const userCredentials = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        // ❌ No password here!
+        const result = await signUp({
+          uid: userCredentials.user.uid,
+          name: name!,
+          email,
+        });
+
+        if (!result?.success) {
+          toast.error(result?.message);
+          return;
+        }
+
         console.log("sign-up", values);
-        toast.success("account created. please sign in");
+        toast.success("Account created. Please sign in.");
         router.push("/sign-in");
       } else {
-        console.log("sign in", values);
-        toast.success("sign in successfully");
+        // Sign-in flow
+        const { email, password } = values;
+        const userCredentials = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        const idToken = await userCredentials.user.getIdToken();
+        if (!idToken) {
+          toast.error("Sign in failed.");
+          return;
+        }
+
+        await signIn({
+          email,
+          idToken,
+        });
+
+        toast.success("Signed in successfully.");
         router.push("/");
       }
-    } catch (error) {
-      console.log(error);
-      toast.error(`there was an error: ${error}`);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(`There was an error: ${error.message || error}`);
     }
   }
 
@@ -55,7 +98,7 @@ const Authform = ({ type }: { type: FormType }) => {
     <div className="card-border lg:min-w-[556px]">
       <div className="flex flex-col gap-6 card py-14 px-10">
         <div className="flex flex-row gap-2 justify-center">
-          <Image src="/logo.svg" alt="logo" height={32} width={38} />
+          <Image src="/logo.svg" alt="logo" height={38} width={38} />
           <h2 className="text-primary-100">Prep Wise</h2>
         </div>
         <h3>Practice job interview</h3>
