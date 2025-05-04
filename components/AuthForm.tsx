@@ -14,7 +14,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import { auth } from "@/firebase/Client";
+import { authClient } from "@/firebase/Client";
 import { signIn, signUp } from "@/lib/actions/auth.action";
 
 const authFormSchema = (type: FormType) => {
@@ -44,12 +44,11 @@ const Authform = ({ type }: { type: FormType }) => {
         const { name, email, password } = values;
 
         const userCredentials = await createUserWithEmailAndPassword(
-          auth,
+          authClient,
           email,
           password
         );
 
-        // ❌ No password here!
         const result = await signUp({
           uid: userCredentials.user.uid,
           name: name!,
@@ -68,7 +67,7 @@ const Authform = ({ type }: { type: FormType }) => {
         // Sign-in flow
         const { email, password } = values;
         const userCredentials = await signInWithEmailAndPassword(
-          auth,
+          authClient,
           email,
           password
         );
@@ -87,6 +86,7 @@ const Authform = ({ type }: { type: FormType }) => {
         toast.success("Signed in successfully.");
         router.push("/");
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error(error);
       toast.error(`There was an error: ${error.message || error}`);
